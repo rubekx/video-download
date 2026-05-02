@@ -43,7 +43,12 @@ def job_status(job_id):
         return jsonify({"status": "failed"})
 
     else:
-        return jsonify({"status": job.get_status()})
+        return jsonify({
+            "status": job.get_status(),
+            "progress": job.meta.get("progress"),
+            "speed": job.meta.get("speed"),
+            "eta": job.meta.get("eta")
+        })
 
 
 @app.route("/file/<filename>")
