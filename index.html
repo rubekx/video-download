@@ -128,7 +128,7 @@
 
   async function pollProgress() {
     const interval = setInterval(async () => {
-      const res = await fetch(`/api/progress/${jobId}`);
+      const res = await fetch(`/api/status/${jobId}`);
       const data = await res.json();
 
       if (data.progress) {
@@ -141,7 +141,7 @@
       if (data.status === "finished") {
         clearInterval(interval);
 
-        const file = data.file;
+        const file = data.result.file;
         const link = document.getElementById("fileLink");
 
         link.href = `/api/file/${file}`;
