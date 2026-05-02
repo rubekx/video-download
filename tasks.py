@@ -13,21 +13,21 @@ def clean_ansi(text):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
 
-def progress_hook(d):
-    job = get_current_job()
-    if job and d['status'] == 'downloading':
-        progress = clean_ansi(d.get('_percent_str', '0%')).strip()
-        speed = clean_ansi(d.get('_speed_str', '')).strip()
-        eta = clean_ansi(d.get('_eta_str', '')).strip()
-        
-        job.meta['progress'] = progress
-        job.meta['speed'] = speed
-        job.meta['eta'] = eta
-        job.save_meta()
-
 def download_video_task(url):
     filename = f"{uuid.uuid4()}.mp4"
     filepath = os.path.join(DOWNLOAD_FOLDER, filename)
+    job = get_current_job()
+
+    def progress_hook(d):
+        if job and d['status'] == 'downloading':
+            progress = clean_ansi(d.get('_percent_str', '0%')).strip()
+            speed = clean_ansi(d.get('_speed_str', '')).strip()
+            eta = clean_ansi(d.get('_eta_str', '')).strip()
+            
+            job.meta['progress'] = progress
+            job.meta['speed'] = speed
+            job.meta['eta'] = eta
+            job.save_meta()
 
     ydl_opts = {
         'format': 'bestvideo+bestaudio/best',
