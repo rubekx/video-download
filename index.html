@@ -112,7 +112,7 @@
     document.getElementById("bar").style.width = "0%";
     document.getElementById("download").style.display = "none";
 
-    const res = await fetch("http://localhost:5000/download", {
+    const res = await fetch("/api/download", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -128,7 +128,7 @@
 
   async function pollProgress() {
     const interval = setInterval(async () => {
-      const res = await fetch(`http://localhost:5000/progress/${jobId}`);
+      const res = await fetch(`/api/progress/${jobId}`);
       const data = await res.json();
 
       if (data.progress) {
@@ -144,7 +144,7 @@
         const file = data.file;
         const link = document.getElementById("fileLink");
 
-        link.href = `http://localhost:5000/file/${file}`;
+        link.href = `/api/file/${file}`;
         document.getElementById("download").style.display = "block";
 
         document.getElementById("info").innerText = "Pronto!";
