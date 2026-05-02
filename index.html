@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Video Downloader</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 12px;
+      width: 400px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 10px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #22c55e;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+
+    .progress {
+      margin-top: 15px;
+      background: #334155;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 20px;
+    }
+
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: #22c55e;
+      transition: width 0.5s;
+    }
+
+    .info {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .download-link {
+      margin-top: 15px;
+      display: none;
+    }
+
+    a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>🎬 Video Downloader</h2>
+
+  <input id="url" placeholder="Cole o link do vídeo aqui" />
+
+  <button onclick="startDownload()">Baixar</button>
+
+  <div class="progress">
+    <div class="bar" id="bar"></div>
+  </div>
+
+  <div class="info" id="info">Aguardando...</div>
+
+  <div class="download-link" id="download">
+    <a id="fileLink" href="#" download>⬇️ Baixar arquivo</a>
+  </div>
+</div>
+
+<script>
+  let jobId = null;
+
+  async function startDownload() {
+    const url = document.getElementById("url").value;
+
+    if (!url) {
+      alert("Cole uma URL primeiro 😅");
+      return;
+    }
+
+    document.getElementById("info").innerText = "Enviando...";
+    document.getElementById("bar").style.width = "0%";
+    document.getElementById("download").style.display = "none";
+
+    const res = await fetch("http://localhost:5000/download", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ url })
+    });
+
+    const data = await res.json();
+    jobId = data.job_id;
+
+    pollProgress();
+  }
+
+  async function pollProgress() {
+    const interval = setInterval(async () => {
+      const res = await fetch(`http://localhost:5000/progress/${jobId}`);
+      const data = await res.json();
+
+      if (data.progress) {
+        document.getElementById("bar").style.width = data.progress;
+      }
+
+      document.getElementById("info").innerText =
+        `${data.status} ${data.speed || ""} ${data.eta || ""}`;
+
+      if (data.status === "finished") {
+        clearInterval(interval);
+
+        const file = data.file;
+        const link = document.getElementById("fileLink");
+
+        link.href = `http://localhost:5000/file/${file}`;
+        document.getElementById("download").style.display = "block";
+
+        document.getElementById("info").innerText = "Pronto!";
+      }
+
+      if (data.status === "error") {
+        clearInterval(interval);
+        document.getElementById("info").innerText = "Erro 😢";
+      }
+
+    }, 1000);
+  }
+</script>
+
+</body>
+</html>
