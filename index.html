@@ -1,219 +1,35 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <title>Video Downloader</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .container {
-      background: #1e293b;
-      padding: 30px;
-      border-radius: 12px;
-      width: 400px;
-      text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-
-    input, select {
-      width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      margin-bottom: 10px;
-      box-sizing: border-box;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      background: #22c55e;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #16a34a;
-    }
-
-    .progress {
-      margin-top: 15px;
-      background: #334155;
-      border-radius: 8px;
-      overflow: hidden;
-      height: 20px;
-    }
-
-    .bar {
-      height: 100%;
-      width: 0%;
-      background: #22c55e;
-      transition: width 0.5s;
-    }
-
-    .info {
-      margin-top: 10px;
-      font-size: 14px;
-    }
-
-    .download-link {
-      margin-top: 15px;
-      display: none;
-    }
-
-    a {
-      color: #38bdf8;
-      text-decoration: none;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<div class="container">
-  <h2>🎬 Video Downloader</h2>
+  <div class="container">
+    <h2>🎬 Video Downloader</h2>
 
-  <input id="url" placeholder="Cole o link do YouTube, Instagram, etc" oninput="debounceFetchInfo()" />
+    <input id="url" placeholder="Cole o link do YouTube, Instagram, etc" oninput="debounceFetchInfo()" />
 
-  <select id="resolution" style="display: none;">
-  </select>
+    <select id="resolution" style="display: none;">
+    </select>
 
-  <button id="btn-download" onclick="startDownload()" style="display: none; margin-top: 10px;">Baixar</button>
+    <button id="btn-download" onclick="startDownload()" style="display: none; margin-top: 10px;">Baixar</button>
 
-  <div class="progress">
-    <div class="bar" id="bar"></div>
+    <div class="progress">
+      <div class="bar" id="bar"></div>
+    </div>
+
+    <div class="info" id="info">Aguardando...</div>
+
+    <div class="download-link" id="download">
+      <a id="fileLink" href="#" download>⬇️ Baixar arquivo</a>
+    </div>
   </div>
-
-  <div class="info" id="info">Aguardando...</div>
-
-  <div class="download-link" id="download">
-    <a id="fileLink" href="#" download>⬇️ Baixar arquivo</a>
-  </div>
-</div>
-
-<script>
-  let jobId = null;
-  let fetchTimeout = null;
-
-  function debounceFetchInfo() {
-    clearTimeout(fetchTimeout);
-    
-    const url = document.getElementById("url").value;
-    if (!url) {
-      document.getElementById("resolution").style.display = "none";
-      document.getElementById("btn-download").style.display = "none";
-      document.getElementById("info").innerText = "Aguardando...";
-      return;
-    }
-
-    fetchTimeout = setTimeout(() => {
-      fetchInfo();
-    }, 800);
-  }
-
-  async function fetchInfo() {
-    const url = document.getElementById("url").value;
-    if (!url) return;
-
-    document.getElementById("info").innerText = "Buscando resoluções...";
-
-    try {
-      const res = await fetch("/api/info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url })
-      });
-      const data = await res.json();
-      
-      if (data.error) {
-        document.getElementById("info").innerText = "Erro ao buscar vídeo.";
-        return;
-      }
-
-      const select = document.getElementById("resolution");
-      select.innerHTML = '<option value="best">Melhor qualidade</option>';
-      data.resolutions.forEach(res => {
-        select.innerHTML += `<option value="${res}">${res}p</option>`;
-      });
-
-      select.style.display = "block";
-      document.getElementById("btn-download").style.display = "block";
-      document.getElementById("info").innerText = "Selecione a resolução e clique em Baixar.";
-    } catch (e) {
-      document.getElementById("info").innerText = "Erro ao buscar vídeo.";
-    }
-  }
-
-  async function startDownload() {
-    const url = document.getElementById("url").value;
-    const resolution = document.getElementById("resolution").value;
-
-    if (!url) {
-      alert("Cole uma URL primeiro 😅");
-      return;
-    }
-
-    document.getElementById("info").innerText = "Enviando...";
-    document.getElementById("bar").style.width = "0%";
-    document.getElementById("download").style.display = "none";
-
-    const res = await fetch("/api/download", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ url, resolution })
-    });
-
-    const data = await res.json();
-    jobId = data.job_id;
-
-    pollProgress();
-  }
-
-  async function pollProgress() {
-    const interval = setInterval(async () => {
-      const res = await fetch(`/api/status/${jobId}`);
-      const data = await res.json();
-
-      if (data.progress) {
-        document.getElementById("bar").style.width = data.progress;
-      }
-
-      document.getElementById("info").innerText =
-        `${data.status} ${data.speed || ""} ${data.eta || ""}`;
-
-      if (data.status === "finished") {
-        clearInterval(interval);
-        document.getElementById("bar").style.width = "100%";
-
-        const file = data.result.file;
-        const link = document.getElementById("fileLink");
-
-        link.href = `/api/file/${file}`;
-        document.getElementById("download").style.display = "block";
-
-        document.getElementById("info").innerText = "Pronto!";
-      }
-
-      if (data.status === "error") {
-        clearInterval(interval);
-        document.getElementById("info").innerText = "Erro 😢";
-      }
-
-    }, 500);
-  }
-</script>
-
+  <script src="index.js"></script>
 </body>
+
 </html>
