@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, after_this_request
 from redis import Redis
 from rq import Queue
 from rq.job import Job
@@ -71,6 +71,14 @@ def get_file(filename):
 
     if not os.path.exists(filepath):
         return jsonify({"error": "arquivo não encontrado"}), 404
+
+    @after_this_request
+    def remove_file(response):
+        try:
+            os.remove(filepath)
+        except Exception as error:
+            app.logger.error(f"Erro ao deletar arquivo: {error}")
+        return response
 
     return send_file(filepath, as_attachment=True)
 
