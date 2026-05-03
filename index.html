@@ -83,9 +83,7 @@
 <div class="container">
   <h2>🎬 Video Downloader</h2>
 
-  <input id="url" placeholder="Cole o link do vídeo aqui" />
-
-  <button id="btn-info" onclick="fetchInfo()">Verificar Vídeo</button>
+  <input id="url" placeholder="Cole o link do vídeo aqui" oninput="debounceFetchInfo()" />
 
   <select id="resolution" style="display: none;">
   </select>
@@ -105,16 +103,29 @@
 
 <script>
   let jobId = null;
+  let fetchTimeout = null;
 
-  async function fetchInfo() {
+  function debounceFetchInfo() {
+    clearTimeout(fetchTimeout);
+    
     const url = document.getElementById("url").value;
     if (!url) {
-      alert("Cole uma URL primeiro 😅");
+      document.getElementById("resolution").style.display = "none";
+      document.getElementById("btn-download").style.display = "none";
+      document.getElementById("info").innerText = "Aguardando...";
       return;
     }
 
+    fetchTimeout = setTimeout(() => {
+      fetchInfo();
+    }, 800);
+  }
+
+  async function fetchInfo() {
+    const url = document.getElementById("url").value;
+    if (!url) return;
+
     document.getElementById("info").innerText = "Buscando resoluções...";
-    document.getElementById("btn-info").disabled = true;
 
     try {
       const res = await fetch("/api/info", {
@@ -126,7 +137,6 @@
       
       if (data.error) {
         document.getElementById("info").innerText = "Erro ao buscar vídeo.";
-        document.getElementById("btn-info").disabled = false;
         return;
       }
 
@@ -138,12 +148,10 @@
 
       select.style.display = "block";
       document.getElementById("btn-download").style.display = "block";
-      document.getElementById("btn-info").style.display = "none";
       document.getElementById("info").innerText = "Selecione a resolução e clique em Baixar.";
     } catch (e) {
       document.getElementById("info").innerText = "Erro ao buscar vídeo.";
     }
-    document.getElementById("btn-info").disabled = false;
   }
 
   async function startDownload() {
@@ -187,6 +195,7 @@
 
       if (data.status === "finished") {
         clearInterval(interval);
+        document.getElementById("bar").style.width = "100%";
 
         const file = data.result.file;
         const link = document.getElementById("fileLink");
@@ -202,7 +211,7 @@
         document.getElementById("info").innerText = "Erro 😢";
       }
 
-    }, 1000);
+    }, 500);
   }
 </script>
 
