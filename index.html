@@ -23,12 +23,13 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
 
-    input {
+    input, select {
       width: 100%;
       padding: 12px;
       border-radius: 8px;
       border: none;
       margin-bottom: 10px;
+      box-sizing: border-box;
     }
 
     button {
@@ -84,7 +85,12 @@
 
   <input id="url" placeholder="Cole o link do vídeo aqui" />
 
-  <button onclick="startDownload()">Baixar</button>
+  <button id="btn-info" onclick="fetchInfo()">Verificar Vídeo</button>
+
+  <select id="resolution" style="display: none;">
+  </select>
+
+  <button id="btn-download" onclick="startDownload()" style="display: none; margin-top: 10px;">Baixar</button>
 
   <div class="progress">
     <div class="bar" id="bar"></div>
@@ -100,8 +106,49 @@
 <script>
   let jobId = null;
 
+  async function fetchInfo() {
+    const url = document.getElementById("url").value;
+    if (!url) {
+      alert("Cole uma URL primeiro 😅");
+      return;
+    }
+
+    document.getElementById("info").innerText = "Buscando resoluções...";
+    document.getElementById("btn-info").disabled = true;
+
+    try {
+      const res = await fetch("/api/info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      
+      if (data.error) {
+        document.getElementById("info").innerText = "Erro ao buscar vídeo.";
+        document.getElementById("btn-info").disabled = false;
+        return;
+      }
+
+      const select = document.getElementById("resolution");
+      select.innerHTML = '<option value="best">Melhor qualidade</option>';
+      data.resolutions.forEach(res => {
+        select.innerHTML += `<option value="${res}">${res}p</option>`;
+      });
+
+      select.style.display = "block";
+      document.getElementById("btn-download").style.display = "block";
+      document.getElementById("btn-info").style.display = "none";
+      document.getElementById("info").innerText = "Selecione a resolução e clique em Baixar.";
+    } catch (e) {
+      document.getElementById("info").innerText = "Erro ao buscar vídeo.";
+    }
+    document.getElementById("btn-info").disabled = false;
+  }
+
   async function startDownload() {
     const url = document.getElementById("url").value;
+    const resolution = document.getElementById("resolution").value;
 
     if (!url) {
       alert("Cole uma URL primeiro 😅");
@@ -117,7 +164,7 @@
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url, resolution })
     });
 
     const data = await res.json();

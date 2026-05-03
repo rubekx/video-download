@@ -13,7 +13,21 @@ def clean_ansi(text):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
 
-def download_video_task(url):
+def get_video_info(url):
+    ydl_opts = {
+        'noplaylist': True,
+        'quiet': True,
+    }
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        formats = info.get('formats', [])
+        resolutions = set()
+        for f in formats:
+            if f.get('vcodec') != 'none' and f.get('height'):
+                resolutions.add(f.get('height'))
+        return sorted(list(resolutions), reverse=True)
+
+def download_video_task(url, resolution="best"):
     filename = f"{uuid.uuid4()}.mp4"
     filepath = os.path.join(DOWNLOAD_FOLDER, filename)
     job = get_current_job()
@@ -29,8 +43,13 @@ def download_video_task(url):
             job.meta['eta'] = eta
             job.save_meta()
 
+    if resolution == "best":
+        format_str = 'bestvideo+bestaudio/best'
+    else:
+        format_str = f'bestvideo[height<={resolution}]+bestaudio/best[height<={resolution}]/best'
+
     ydl_opts = {
-        'format': 'bestvideo+bestaudio/best',
+        'format': format_str,
         'merge_output_format': 'mp4',
         'outtmpl': filepath,
         'noplaylist': True,

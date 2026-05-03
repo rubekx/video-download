@@ -4,7 +4,7 @@ from rq import Queue
 from rq.job import Job
 import os
 
-from tasks import download_video_task
+from tasks import download_video_task, get_video_info
 
 app = Flask(__name__)
 
@@ -13,15 +13,29 @@ queue = Queue(connection=redis_conn)
 
 DOWNLOAD_FOLDER = "/app/downloads"
 
+@app.route("/info", methods=["POST"])
+def fetch_info():
+    data = request.json
+    url = data.get("url")
+    if not url:
+        return jsonify({"error": "URL é obrigatória"}), 400
+    
+    try:
+        resolutions = get_video_info(url)
+        return jsonify({"resolutions": resolutions})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
 @app.route("/download", methods=["POST"])
 def create_job():
     data = request.json
     url = data.get("url")
+    resolution = data.get("resolution", "best")
 
     if not url:
         return jsonify({"error": "URL é obrigatória"}), 400
 
-    job = queue.enqueue(download_video_task, url)
+    job = queue.enqueue(download_video_task, url, resolution)
 
     return jsonify({
         "job_id": job.id,
