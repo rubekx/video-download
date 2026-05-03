@@ -19,13 +19,16 @@ def get_video_info(url):
         'quiet': True,
     }
     with YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        formats = info.get('formats', [])
-        resolutions = set()
-        for f in formats:
-            if f.get('vcodec') != 'none' and f.get('height'):
-                resolutions.add(f.get('height'))
-        return sorted(list(resolutions), reverse=True)
+        try:
+            info = ydl.extract_info(url, download=False)
+            formats = info.get('formats', [])
+            resolutions = set()
+            for f in formats:
+                if f.get('vcodec') != 'none' and f.get('height'):
+                    resolutions.add(f.get('height'))
+            return sorted(list(resolutions), reverse=True)
+        except Exception:
+            return []
 
 def download_video_task(url, resolution="best"):
     filename = f"{uuid.uuid4()}.mp4"
