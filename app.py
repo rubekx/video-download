@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, send_file, after_this_request
+from flask import Flask, request, jsonify, send_from_directory, after_this_request
+from werkzeug.utils import secure_filename
 from redis import Redis
 from rq import Queue
 from rq.job import Job
@@ -17,8 +18,8 @@ DOWNLOAD_FOLDER = "/app/downloads"
 def fetch_info():
     data = request.json
     url = data.get("url")
-    if not url:
-        return jsonify({"error": "URL é obrigatória"}), 400
+    if not url or not url.startswith(("http://", "https://")):
+        return jsonify({"error": "URL inválida ou obrigatória"}), 400
     
     try:
         resolutions = get_video_info(url)
@@ -30,10 +31,13 @@ def fetch_info():
 def create_job():
     data = request.json
     url = data.get("url")
-    resolution = data.get("resolution", "best")
+    resolution = str(data.get("resolution", "best"))
 
-    if not url:
-        return jsonify({"error": "URL é obrigatória"}), 400
+    if not url or not url.startswith(("http://", "https://")):
+        return jsonify({"error": "URL inválida ou obrigatória"}), 400
+
+    if resolution != "best" and not resolution.isdigit():
+        return jsonify({"error": "Resolução inválida"}), 400
 
     job = queue.enqueue(download_video_task, url, resolution)
 
@@ -67,6 +71,7 @@ def job_status(job_id):
 
 @app.route("/file/<filename>")
 def get_file(filename):
+    filename = secure_filename(filename)
     filepath = os.path.join(DOWNLOAD_FOLDER, filename)
 
     if not os.path.exists(filepath):
@@ -75,12 +80,13 @@ def get_file(filename):
     @after_this_request
     def remove_file(response):
         try:
-            os.remove(filepath)
+            if os.path.exists(filepath):
+                os.remove(filepath)
         except Exception as error:
             app.logger.error(f"Erro ao deletar arquivo: {error}")
         return response
 
-    return send_file(filepath, as_attachment=True)
+    return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
 
 
 if __name__ == "__main__":
