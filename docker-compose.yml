@@ -3,9 +3,9 @@ version: "3.9"
 services:
   nginx:
     image: nginx:latest
-    container_name: nginx
+    container_name: ${NGINX_CONTAINER}
     ports:
-      - "80:80"
+      - ${NGINX_PORT}:80
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./index.html:/usr/share/nginx/html/index.html
@@ -14,6 +14,7 @@ services:
 
   api:
     build: .
+    container_name: ${API_CONTAINER}
     command: python app.py
     volumes:
       - ./downloads:/app/downloads
@@ -22,6 +23,7 @@ services:
 
   worker:
     build: .
+    container_name: ${wORKER_CONTAINER}
     command: python worker.py
     volumes:
       - ./downloads:/app/downloads
